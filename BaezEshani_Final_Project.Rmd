@@ -1,0 +1,414 @@
+---
+title: "BaezEshani-FinalCheckIn"
+author: "Eshani Baez"
+date: "2026-09-30"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+**Data Source:** For your final project, you will be working with real RNA-seq count and meta data from breast cancer patients enrolled in The Cancer Genome Atlas (TCGA) Breast Invasive Carcinoma (TCGA-BRCA) cohort. This data encompasses diverse subtypes, tumor stages, and patient demographics. Some samples represent tumor tissues; others matched normal control samples from the same patient. TCGA is a landmark cancer genomics program jointly funded by the National Cancer Institute (NCI) and the National Human Genome Research Institute (NHGRI). TCGA generated comprehensive molecular profiles for over 11,000 patients across 33 cancer types, including bulk RNA-seq DNA methylation, copy number variation, somatic mutations, and clinical annotation. 
+
+This data source includes the following meta data:
+•	Patient Demographics
+•	Tumor Characteristics
+•	Treatment Information
+•	Survival Data
+•	Sample Details
+
+1)	Data Preparation:
+  a)	Download the Sample RNA-seq Count Matrix and associated Metadata.
+    i)	Ensure that you have both the count matrix (counts.csv) and the metadata file (meta_data.csv) available for your analysis.
+```{r}
+# EXPLANATION:
+# Sets the working directory to that of the current working markdown file as
+# well as any data files to reference in this script. The two data files 
+# ("meta_data.csv" and "counts.csv") are then read into the document from the 
+# working directory in order to clean and \n run analyses on the raw data.
+
+# All necessary libraries and packages are loaded for use throughout the script
+library(tidyverse)
+library(ComplexHeatmap)
+library(circlize)
+library(ggpubr)
+
+setwd("/Users/eshani/Downloads/Dartmouth MS/Semester 1/Foundations in Data Science (HSE711)/HSE711 - Final Project") # Sets the working directory
+meta_data <- read_csv("meta_data.csv")
+counts_data <- read_csv("counts.csv") 
+
+```
+
+2)	Gene Selection and Summary Statistics:
+  a)	Select One Gene: choose a gene from the dataset that interests you.
+  b)	Generate Summary Statistics: Using the count data from the selected gene, compute and report summary statistics, such as mean, median, standard deviation, minimum, and maximum. 
+```{r}
+# EXPLANATION:
+# The raw counts data is in wide form with each sample's counts in columns and 
+# genes as rows. The below, first transposes the data frame so that genes become
+# columns and samples become rows.
+
+# CITATION (for transposing the raw data): 
+# Pivoting. (n.d.). Retrieved September 30, 2026, from https://tidyr.tidyverse.org/articles/pivot.html#longer-then-wider
+
+# Transposes the counts_data so that ensembl id genes become column names with
+# their associated values/counts for each sample. Sample names have become row titles.
+counts_data_t <- counts_data |> 
+  pivot_longer(- ...1, names_to = "barcode", values_to = "value") |>  
+  pivot_wider(names_from = ...1, values_from = value)
+
+# EXPLANATION:
+# Creates a function that takes in a gene counts data set (where each column is a gene's 
+# ensembl ID and each row is a different sample), a specific ensembl ID from the data set,
+# a table theme (from ggpubr's table themes), a title for the summary statistics table it
+# will generate, and a name for the .png file it will save of the table. The function will
+# first generate the following summary statistics for the selected gene: mean, median, 
+# minimum, maximum, and standard deviation. Then, the summary will be formatted into a 
+# table using the ggpubr package. Ultimately ggsave is used to save the table to a .png 
+# file with the file name of your choosing.
+
+
+
+# CITATION: 
+
+
+
+
+summary_stats_table <- function(data_set, ensembl_id, table_theme, table_title, file_name) {
+  # Generates the summary statistics for ensembl_id
+  stats <- data_set |> summarise(      
+    Mean = round(mean(.data[[ensembl_id]]), 2),
+    Median = round(median(.data[[ensembl_id]]), 2),
+    Min = round(min(.data[[ensembl_id]]), 2),
+    Max = round(max(.data[[ensembl_id]]), 2),
+    SD = round(sd(.data[[ensembl_id]]), 2)
+  ) 
+  
+  # Creates a table of the summary statistics.
+  stats_table <- ggtexttable(
+    stats, 
+    rows = NULL,
+    theme = ttheme(table_theme, base_size = 16)
+  ) |> 
+    tab_add_title(
+      text = table_title,
+      face = "bold",
+      size = 14,
+      just = "center"
+    )
+  
+  # Saves plot as .png for presentation
+  ggsave(file_name, plot = stats_table, width = 6, height = 2, dpi = 300)
+  
+  return(stats_table)
+}
+
+# Creates a BRCA1 table of summary statistics by calling the summary_stats_table function
+BRCA1_table <- summary_stats_table(
+  data_set = counts_data_t,
+  ensembl_id = "ENSG00000012048.23",
+  table_theme = "mBlue",
+  table_title = "BRCA1 Expression Summary Statistics",
+  file_name = "BRCA1_stats_table.png"
+)
+
+BRCA1_table
+
+# Creates a PALB2 table of summary statistics by calling the summary_stats_table function
+PALB2_table <- summary_stats_table(
+  data_set = counts_data_t,
+  ensembl_id = "ENSG00000083093.10",
+  table_theme = "mBlue",
+  table_title = "PALB2 Expression Summary Statistics",
+  file_name = "PALB2_stats_table.png"
+)
+
+PALB2_table
+
+```
+
+
+
+3)	Visualization:
+  a)	Create a Histogram: Use ggplot2 to generate a histogram of the count data for the selected gene.This visualization should effectively display the distribution of the counts. 
+```{r}
+# EXPLANATION:
+# Creates a histogram of BRCA1 Gene counts across the TCGA-BRCA cohort samples. 
+# Bin width has been adjusted to display the counts distribution. Bins have been 
+# outlined in black for improved readability.
+
+BRCA1_hist <- ggplot(counts_data_t, aes(x = ENSG00000012048.23)) +
+  geom_histogram(binwidth = 150, fill = "deeppink3", color = "black") +
+  labs(title = "BRCA1 Gene Count Across 1,231 Samples", 
+       x = "BRCA1 Gene (ENSG00000012048.23) Count", 
+       y = "Frequency")
+  
+BRCA1_hist
+
+ggsave("BRCA1_histogram.png", plot = BRCA1_hist) # Saves plot as .png for presentation
+
+``` 
+  
+  b)	Create a Scatter Plot: Select a second gene from the dataset. Create a scatter plot using ggplot2 to compare the count data of the two selected genes. 
+```{r}
+# EXPLANATION:
+# Generates a scatterplot comparing BRCA1 (ENSG00000012048.23) and PALB2 (ENSG00000083093.10) 
+# counts in the TCGA-BRCA cohort samples. BRCA1 gene counts are plotted on the x-axis 
+# and PALB2 gene counts are plotted on the y-axis. Transparency is adjusted for 
+# the points, to visually observe overlap and where most points are clumping.
+
+# Assigns ENSG00000012048.23 and ENSG00000083093.10 for analysis in the ggplot
+BRCA1_PALB2_scat <- ggplot(counts_data_t, aes(x = ENSG00000012048.23, y = ENSG00000083093.10)) + 
+  
+  # Applies a level of transparency to the plot points to visualize where majority
+  # of the data is saturated
+  geom_point(color = "deeppink3", alpha = 0.5) + 
+  
+  labs(x = "BRCA1 Count", y = "PALB2 Count", title = "BRCA1 Against PALB2 Gene Count") +
+  geom_smooth(method = "lm", formula = y ~ x, se = TRUE, color = "deeppink4")   # Adds regression line using linear model
+
+BRCA1_PALB2_scat
+
+# Saves plot as .png for presentation
+ggsave("BRCA1_PALB2_scatterplot.png", plot = BRCA1_PALB2_scat) 
+
+
+```
+
+  c)	Create a Violin Plot: Select one covariate from your metadata. Using the count data from the first gene and the selected covariate, generate a violin plot that illustrates the distribution of count data based on the covariate. For example, if you choose “primary_diagnosis”, your plot should display a violin plot for each level in “primary_diagnosis”.
+```{r}
+# EXPLANATION
+# The below, generates a violin plot of BRCA1 gene count across all TCGA-BRCA cohort 
+# samples. Counts are grouped by each participant's age at diagnosis as grouped by decade. 
+# Ages at diagnosis in the raw meta_data dataset are first replaced by age in years 
+# rather than age in days. Next, a new, identical data frame (df) is created that 
+# groups ages into ranges by decade (20s, 30s, 40s, etc.). The age categorization is 
+# used for creating violin plots for each "decade". 
+
+# In order to create a plot with data from both the counts df and the meta_data df, 
+# the two were merged by their shared sample "barcode" column. 
+
+# Ggplot was then used to generate a violin plot with age at diagnosis to generate 
+# multiple violin plots on the x-axis and BRCA1 count on the y-axis. Samples that did
+# not include age data/were "NA" were filtered out. Each age group's plot has a unique
+# color. Boxplots have been added over the violin plots for each age group to cleanly, 
+# visually, summarize each group.
+
+# I also ran a quick table function to check that my age categorization worked as I 
+# had hoped and for further analysis of the age at diagnosis data.
+
+
+meta_data_age_cat <- meta_data |> 
+  # Adjust age values to be calculated in approximate years rather than days, 
+  # rounded to 1 decimal point. Replace the age_at_diagnosis column in the meta_data df.
+  mutate(age_at_diagnosis = round(age_at_diagnosis/365, 1)) |> 
+  
+  # Categorizes participant age at diagnosis for each sample into every 10 year age group
+  mutate(age_at_diagnosis = case_when(age_at_diagnosis >= 20 & age_at_diagnosis < 30 ~ "20s",
+                   age_at_diagnosis >= 30 & age_at_diagnosis < 40 ~ "30s",
+                   age_at_diagnosis >= 40 & age_at_diagnosis < 50 ~ "40s",
+                   age_at_diagnosis >= 50 & age_at_diagnosis < 60 ~ "50s",
+                   age_at_diagnosis >= 60 & age_at_diagnosis < 70 ~ "60s",
+                   age_at_diagnosis >= 70 & age_at_diagnosis < 80 ~ "70s",
+                   age_at_diagnosis >= 80 & age_at_diagnosis < 90 ~ "80s",
+                   age_at_diagnosis >= 90 ~ "90s+"
+                   ))
+
+# Merges the transposed counts and age categorized meta_data data frames by sample barcode
+# DFs are in the same wide format with samples as rows and genes/observations as columns
+all_BRCA_data <- full_join(x = meta_data_age_cat, y = counts_data_t, by = "barcode")
+
+# Returns groups and their counts within the age at diagnosis column in the categorized meta data df
+table(meta_data_age_cat$age_at_diagnosis)
+
+# Violin plot of BRCA1 gene count by age of diagnosis
+BRCA1_violin <- ggplot(all_BRCA_data |> filter(!is.na(age_at_diagnosis)), 
+                       aes(y = ENSG00000012048.23, 
+                           x = age_at_diagnosis, 
+                           fill = age_at_diagnosis)) +
+  geom_violin(alpha = 0.8) +
+  geom_boxplot(alpha = 0.2, width = 0.2) +
+  
+  # Adds color and removes the legend as it is redundant with the x-axis label
+  scale_fill_brewer(palette = "Pastel2", guide = "none") + 
+  labs(x = "Age at Diagnosis", # Adds axes labels and a title to the violin plot
+       y = "BRCA1 Gene Count", 
+       title = "BRCA1 Gene Count at Ages of Diagnosis") 
+
+BRCA1_violin
+
+ggsave("BRCA1_violinplot.png", plot = BRCA1_violin) # Saves plot as .png for presentation
+
+
+```
+
+  d)	Heatmap Analysis: 
+    i)	Select 10 genes: Choose a set of 10 different genes from the count matrix for your heatmap.
+    ii)	Generate a Heatmap: Use the ComplexHeatmap package in R to create a heatmap of the count data for the selected genes. 
+    iii)	Add an Annotation Bar: Include an annotation bar reflecting your chosen covariate for further context and interpretation of the data.
+```{r}
+# EXPLANATION
+# Uses the ComplexHeatmap package to create a heatmap of 10 select genes from the 
+# TCGA-BRCA counts data frame. The selected genes were as follows: BRCA1 (ENSG00000012048.23), 
+# BRCA2 (ENSG00000139618.16), PALB2 (ENSG00000083093.10), ATM (ENSG00000149311.19), 
+# BRIP1 (ENSG00000136492.9),  BARD1 (ENSG00000138376.11), RAD50 (ENSG00000113522.14), 
+# RAD51C (ENSG00000108384.15), CHEK2 (ENSG00000183765.23), NBN (ENSG00000104320.14). 
+# Counts data associated with the 10 selected genes is pulled from the df by the ensembl 
+# IDs which had been previously assigned as row names. Normalized expressions/gene count 
+# values are organized into age at diagnosis group (rather than clustered by similarity), 
+# making it visually straightforward to compare whether gene expression patterns differ 
+# across age decades while still preserving gene-level clustering (on the left) to reveal
+# which genes behave similarly.
+
+# Used stack overflow to learn how to save heatmaps to .png files, as ggsave() is a ggplot object
+#CITATION: Ann_K. (2022, Feb 4). Re: How to save a heat map created using the ComplexHeatmap 
+# package to png format? [Online forum post]. Stack Overflow. https://stackoverflow.com/questions/66044888/how-to-save-a-heat-map-created-using-the-complexheatmap-package-to-png-format.
+
+# Creates new version of counts_data using ensembl IDs under "...1" header as row names
+counts_data_gene_rownames <- counts_data |> 
+  column_to_rownames(var = "...1")
+
+select_genes <- c("ENSG00000012048.23", "ENSG00000139618.16", "ENSG00000083093.10", 
+                  "ENSG00000149311.19", "ENSG00000136492.9", "ENSG00000138376.11", 
+                  "ENSG00000113522.14", "ENSG00000108384.15", "ENSG00000183765.23", 
+                  "ENSG00000104320.14")
+
+# Subsets rows by name for the 10 selected genes
+genes_subset <- counts_data_gene_rownames[select_genes, ] 
+
+# Converts the subset data to a matrix, since Heatmap() requires a matrix datatype for analysis
+gene_matrix <- as.matrix(genes_subset) 
+
+# Normalizes each row independently for general comparison between genes using z-scores.
+gene_matrix_scaled <- t(scale(t(gene_matrix))) 
+
+# Creates gene labels that are human readable by mapping the ensembl IDs found in the raw 
+# data to their associated gene symbols. Ensembl rownames are replaced in the df by 
+# readable labels.
+gene_symbol_map <- c("ENSG00000012048.23" = "BRCA1", "ENSG00000139618.16" = "BRCA2", 
+                     "ENSG00000083093.10" = "PALB2", "ENSG00000149311.19" = "ATM", 
+                     "ENSG00000136492.9" = "BRIP1", "ENSG00000138376.11" = "BARD1", 
+                     "ENSG00000113522.14" = "RAD50", "ENSG00000108384.15" = "RAD51C", 
+                     "ENSG00000183765.23" = "CHEK2", "ENSG00000104320.14" = "NBN") 
+rownames(gene_matrix_scaled) <- gene_symbol_map[rownames(gene_matrix_scaled)]
+
+# Creates a Heatmap annotation bar reflecting ages at diagnosis. Each sample is associated 
+# with a color in the age bar (including samples with missing age data)
+age_annotation_data <- meta_data_age_cat$age_at_diagnosis[match(colnames(gene_matrix), 
+                                                                meta_data_age_cat$barcode)]
+col_annotation <- HeatmapAnnotation(
+  AgeGroup = age_annotation_data,
+  col = list(AgeGroup = c("20s" = "#BCC69B",
+                          "30s" = "#3D3B8E",
+                          "40s" = "#6883BA",
+                          "50s" = "#B1BEDA",
+                          "60s" = "#6EB4D1",
+                          "70s" = "#E072A4",
+                          "80s" = "#C8AA9E",
+                          "90s+" = "#B0E298",
+                          "NA" = "#ADBABD")
+  )
+)
+
+# Works with draw() to save Heatmap as .png for presentation.
+png("genes_heatmap.png", width = 10, height = 8, units = "in", res = 300)
+
+# Creates a heatmap of 10 selected genes
+genes_heatmap_by_age <- Heatmap(gene_matrix_scaled,
+  name = "Z-Score",
+  # Defines the color gradient for z-scores with smooth interpolation between -2 and 2
+  col = colorRamp2(c(-2, 0, 2), c("navy", "white", "firebrick")), 
+  top_annotation = col_annotation, # Attaches the annotation bar created above
+  show_row_names = TRUE,
+  show_column_names = FALSE,
+  cluster_columns = FALSE, # Turns off top dendrogram as it is not relevant to current analysis
+  cluster_rows = TRUE, # Groups genes with similar expression patterns
+  column_title = "Gene Expression by Age at Diagnosis",
+  column_order = order(age_annotation_data), # Orders sample z-score data by age group
+  row_title = "Genes",
+  heatmap_legend_param = list(title = "Z-Score")
+  )
+
+genes_heatmap_by_gene <- Heatmap(gene_matrix_scaled,
+  name = "Z-Score",
+  # Defines the color gradient for z-scores with smooth interpolation between -2 and 2
+  col = colorRamp2(c(-2, 0, 2), c("navy", "white", "firebrick")), 
+  top_annotation = col_annotation, # Attaches the annotation bar created above
+  show_row_names = TRUE,
+  show_column_names = FALSE,
+  cluster_columns = FALSE, # Turns off top dendrogram as it is not relevant to current analysis
+  cluster_rows = TRUE, # Groups genes with similar expression patterns
+  column_title = "Gene Expression by Age at Diagnosis",
+  #column_order = order(age_annotation_data), # Orders sample z-score data by age group
+  row_title = "Genes",
+  heatmap_legend_param = list(title = "Z-Score")
+  )
+
+
+draw(genes_heatmap_by_age) 
+draw(genes_heatmap_by_gene)
+dev.off()
+
+draw(genes_heatmap_by_age)
+draw(genes_heatmap_by_gene)
+
+```
+```{r}
+# EXPLANATION:
+# 
+
+table(meta_data$definition)
+table(is.na(meta_data$definition))
+
+# --------------------------------------------------------
+
+sample_type_jitter_plot <- function(data_set, ensembl_ID, gene_name, metadata_col) {
+  sample_types <- data_set |> 
+  filter(!is.na(.data[[metadata_col]])) |> 
+  mutate(gene_log = log2(.data[[ensembl_ID]] + 1))
+
+p <- ggplot(sample_types, aes(x = .data[[metadata_col]], y = gene_log, fill = .data[[metadata_col]])) +
+  geom_boxplot(alpha = 0.5) +
+  geom_jitter(width = 0.15, alpha = 0.4, size = 1) +
+  stat_compare_means(
+    comparisons = list(
+      c("Primary solid Tumor", "Solid Tissue Normal"),
+      c("Primary solid Tumor", "Metastatic")
+    ),
+    method = "wilcox.test") +
+  
+  scale_fill_brewer(palette = "Pastel2", guide = "none") +
+  labs(x = "Sample Type", 
+       y = paste("log2(", gene_name, "Count + 1"),
+       title = paste(gene_name, "Expression by Sample Type"))
+  
+return(p)
+}
+
+BRCA1_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000012048.23", "BRCA1", "definition")
+BRCA2_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000139618.16", "BRCA2", "definition")
+PALB2_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000083093.10", "PALB2", "definition")
+BARD1_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000138376.11", "BARD1", "definition")
+ATM_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000149311.19", "ATM", "definition")
+BRIP1_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000136492.9", "BRIP1", "definition")
+RAD50_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000113522.14", "RAD50", "definition")
+RAD51C_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000108384.15", "RAD51C", "definition")
+CHEK2_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000183765.23", "CHEK2", "definition")
+NBN_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000104320.14", "NBN", "definition")
+
+
+ggarrange(ncol = 2, nrow = 4, plotlist = BRCA1_jitter, BRCA2_jitter, PALB2_jitter, BARD1_jitter, ATM_jitter, BRIP1_jitter, RAD50_jitter, RAD51C_jitter, CHEK2_jitter, NBN_jitter)
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
