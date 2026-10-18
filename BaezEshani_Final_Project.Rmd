@@ -385,7 +385,8 @@ p <- ggplot(sample_types, aes(x = .data[[metadata_col]], y = gene_log, fill = .d
   stat_compare_means(
     comparisons = list(
       c("Primary solid Tumor", "Solid Tissue Normal"),
-      c("Primary solid Tumor", "Metastatic")
+      c("Primary solid Tumor", "Metastatic"),
+      c("Solid Tissue Normal", "Metastatic")
     ),
     method = "wilcox.test") +
   
