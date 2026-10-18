@@ -33,7 +33,7 @@ library(circlize)
 library(ggpubr)
 
 # Returns R and package versions used throughout the current markdown file
-sessionInfo()
+# sessionInfo()
 
 setwd("/Users/eshani/Downloads/Dartmouth MS/Semester 1/Foundations in Data Science (HSE711)/HSE711 - Final Project") # Sets the working directory
 meta_data <- read_csv("meta_data.csv")
@@ -381,6 +381,7 @@ sample_type_jitter_plot <- function(data_set, ensembl_ID, gene_name, metadata_co
 p <- ggplot(sample_types, aes(x = .data[[metadata_col]], y = gene_log, fill = .data[[metadata_col]])) +
   geom_boxplot(alpha = 0.5) +
   geom_jitter(width = 0.15, alpha = 0.4, size = 1) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0.5)) +
   stat_compare_means(
     comparisons = list(
       c("Primary solid Tumor", "Solid Tissue Normal"),
@@ -390,8 +391,8 @@ p <- ggplot(sample_types, aes(x = .data[[metadata_col]], y = gene_log, fill = .d
   
   scale_fill_brewer(palette = "Pastel2", guide = "none") +
   labs(x = "Sample Type", 
-       y = paste("log2(", gene_name, "Count + 1"),
-       title = paste(gene_name, "Expression by Sample Type"))
+       y = paste("log2(", gene_name, "Count + 1)"),
+       title = str_wrap(paste(gene_name, "Expression by Sample Type"), width = 25))
   
 return(p)
 }
@@ -399,16 +400,16 @@ return(p)
 BRCA1_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000012048.23", "BRCA1", "definition")
 BRCA2_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000139618.16", "BRCA2", "definition")
 PALB2_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000083093.10", "PALB2", "definition")
-BARD1_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000138376.11", "BARD1", "definition")
-ATM_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000149311.19", "ATM", "definition")
-BRIP1_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000136492.9", "BRIP1", "definition")
-RAD50_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000113522.14", "RAD50", "definition")
-RAD51C_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000108384.15", "RAD51C", "definition")
-CHEK2_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000183765.23", "CHEK2", "definition")
-NBN_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000104320.14", "NBN", "definition")
+# BARD1_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000138376.11", "BARD1", "definition")
+# ATM_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000149311.19", "ATM", "definition")
+# BRIP1_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000136492.9", "BRIP1", "definition")
+# RAD50_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000113522.14", "RAD50", "definition")
+# RAD51C_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000108384.15", "RAD51C", "definition")
+# CHEK2_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000183765.23", "CHEK2", "definition")
+# NBN_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000104320.14", "NBN", "definition")
 
 
-ggarrange(ncol = 2, nrow = 4, plotlist = BRCA1_jitter, BRCA2_jitter, PALB2_jitter, BARD1_jitter, ATM_jitter, BRIP1_jitter, RAD50_jitter, RAD51C_jitter, CHEK2_jitter, NBN_jitter)
+ggarrange(ncol = 3, nrow = 1, widths = 2, heights = 6, plotlist = BRCA1_jitter, BRCA2_jitter, PALB2_jitter)
 
 
 
