@@ -32,6 +32,9 @@ library(ComplexHeatmap)
 library(circlize)
 library(ggpubr)
 
+# Returns R and package versions used throughout the current markdown file
+sessionInfo()
+
 setwd("/Users/eshani/Downloads/Dartmouth MS/Semester 1/Foundations in Data Science (HSE711)/HSE711 - Final Project") # Sets the working directory
 meta_data <- read_csv("meta_data.csv")
 counts_data <- read_csv("counts.csv") 
@@ -69,7 +72,7 @@ counts_data_t <- counts_data |>
 
 
 # CITATION: 
-
+# https://rpkgs.datanovia.com/ggpubr/reference/ggtexttable.html
 
 
 
@@ -140,7 +143,9 @@ BRCA1_hist <- ggplot(counts_data_t, aes(x = ENSG00000012048.23)) +
   geom_histogram(binwidth = 150, fill = "deeppink3", color = "black") +
   labs(title = "BRCA1 Gene Count Across 1,231 Samples", 
        x = "BRCA1 Gene (ENSG00000012048.23) Count", 
-       y = "Frequency")
+       y = "Frequency") +
+  geom_vline(xintercept = mean(counts_data_t$ENSG00000012048.23), colour = "#FF00CC") +
+  geom_vline(xintercept = median(counts_data_t$ENSG00000012048.23), colour = "#FF99FF")
   
 BRCA1_hist
 
@@ -278,6 +283,14 @@ genes_subset <- counts_data_gene_rownames[select_genes, ]
 # Converts the subset data to a matrix, since Heatmap() requires a matrix datatype for analysis
 gene_matrix <- as.matrix(genes_subset) 
 
+# Look up each sample's age group, then drop samples with missing age
+age_annotation_data <- meta_data_age_cat$age_at_diagnosis[match(colnames(gene_matrix), 
+                                                                meta_data_age_cat$barcode)]
+
+keep <- !is.na(age_annotation_data)
+gene_matrix <- gene_matrix[, keep]
+age_annotation_data <- age_annotation_data[keep]
+
 # Normalizes each row independently for general comparison between genes using z-scores.
 gene_matrix_scaled <- t(scale(t(gene_matrix))) 
 
@@ -293,8 +306,8 @@ rownames(gene_matrix_scaled) <- gene_symbol_map[rownames(gene_matrix_scaled)]
 
 # Creates a Heatmap annotation bar reflecting ages at diagnosis. Each sample is associated 
 # with a color in the age bar (including samples with missing age data)
-age_annotation_data <- meta_data_age_cat$age_at_diagnosis[match(colnames(gene_matrix), 
-                                                                meta_data_age_cat$barcode)]
+
+
 col_annotation <- HeatmapAnnotation(
   AgeGroup = age_annotation_data,
   col = list(AgeGroup = c("20s" = "#BCC69B",
@@ -304,8 +317,7 @@ col_annotation <- HeatmapAnnotation(
                           "60s" = "#6EB4D1",
                           "70s" = "#E072A4",
                           "80s" = "#C8AA9E",
-                          "90s+" = "#B0E298",
-                          "NA" = "#ADBABD")
+                          "90s+" = "#B0E298")
   )
 )
 
@@ -400,6 +412,15 @@ ggarrange(ncol = 2, nrow = 4, plotlist = BRCA1_jitter, BRCA2_jitter, PALB2_jitte
 
 
 
+
+```
+```{r}
+# LIMITATION: Determines how many unique patients/patient codes exist in the 
+# data to confirm if there are mutliple samples included from the same patient.
+n_distinct(meta_data$patient)
+
+# LIMITATION: Determines how many of each sample type exist in the data set.
+table(meta_data$definition)
 
 ```
 
