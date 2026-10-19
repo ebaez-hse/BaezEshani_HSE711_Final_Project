@@ -24,7 +24,7 @@ This data source includes the following meta data:
 # Sets the working directory to that of the current working markdown file as
 # well as any data files to reference in this script. The two data files 
 # ("meta_data.csv" and "counts.csv") are then read into the document from the 
-# working directory in order to clean and \n run analyses on the raw data.
+# working directory in order to clean and run analyses on the raw data.
 
 # All necessary libraries and packages are loaded for use throughout the script
 library(tidyverse)
@@ -69,12 +69,8 @@ counts_data_t <- counts_data |>
 # table using the ggpubr package. Ultimately ggsave is used to save the table to a .png 
 # file with the file name of your choosing.
 
-
-
 # CITATION: 
 # https://rpkgs.datanovia.com/ggpubr/reference/ggtexttable.html
-
-
 
 summary_stats_table <- function(data_set, ensembl_id, table_theme, table_title, file_name) {
   # Generates the summary statistics for ensembl_id
@@ -139,13 +135,32 @@ PALB2_table
 # Bin width has been adjusted to display the counts distribution. Bins have been 
 # outlined in black for improved readability.
 
+# Calculates mean and median for BRCA1 counts across samples
+BRCA1_mean <- mean(counts_data_t$ENSG00000012048.23)
+BRCA1_median <- median(counts_data_t$ENSG00000012048.23)
+
 BRCA1_hist <- ggplot(counts_data_t, aes(x = ENSG00000012048.23)) +
   geom_histogram(binwidth = 150, fill = "deeppink3", color = "black") +
   labs(title = "BRCA1 Gene Count Across 1,231 Samples", 
        x = "BRCA1 Gene (ENSG00000012048.23) Count", 
        y = "Frequency") +
-  geom_vline(xintercept = mean(counts_data_t$ENSG00000012048.23), colour = "#FF00CC") +
-  geom_vline(xintercept = median(counts_data_t$ENSG00000012048.23), colour = "#FF99FF")
+  # Adds a vertical line at BRCA1 mean
+  geom_vline(xintercept = BRCA1_mean, color = "#FF00CC") +
+  
+  # Adds a label to the mean line
+  annotate("text", x = BRCA1_mean, y = 125,   
+           label = paste0("Mean = ", round(BRCA1_mean), 1), 
+           color = "#FF00CC",
+           angle = 90, vjust = 1.5) +
+  
+  # Adds a vertical line at BRCA1 median
+  geom_vline(xintercept = BRCA1_median, color = "#FF99FF") +
+ 
+   # Adds a label to the median line
+  annotate("text", x = BRCA1_median, y = 125,  
+           label = paste0("Median = ", round(BRCA1_median), 1), 
+           color = "#FF99FF",
+           angle = 90, vjust = 1.5)
   
 BRCA1_hist
 
@@ -340,82 +355,86 @@ genes_heatmap_by_age <- Heatmap(gene_matrix_scaled,
   heatmap_legend_param = list(title = "Z-Score")
   )
 
-genes_heatmap_by_gene <- Heatmap(gene_matrix_scaled,
-  name = "Z-Score",
-  # Defines the color gradient for z-scores with smooth interpolation between -2 and 2
-  col = colorRamp2(c(-2, 0, 2), c("navy", "white", "firebrick")), 
-  top_annotation = col_annotation, # Attaches the annotation bar created above
-  show_row_names = TRUE,
-  show_column_names = FALSE,
-  cluster_columns = FALSE, # Turns off top dendrogram as it is not relevant to current analysis
-  cluster_rows = TRUE, # Groups genes with similar expression patterns
-  column_title = "Gene Expression by Age at Diagnosis",
-  #column_order = order(age_annotation_data), # Orders sample z-score data by age group
-  row_title = "Genes",
-  heatmap_legend_param = list(title = "Z-Score")
-  )
 
 
 draw(genes_heatmap_by_age) 
-draw(genes_heatmap_by_gene)
 dev.off()
 
 draw(genes_heatmap_by_age)
-draw(genes_heatmap_by_gene)
 
 ```
 ```{r}
-# EXPLANATION:
-# 
+# EXPLANATION: Compares gene expression across the three sample types in the TCGA-BRCA
+# cohort (primary solid tumor, solid tissue normal, and metastatic). It first checks
+# the sample type column for missing values, then defines a reusable function that 
+# builds a boxplot + jitter plot of log2-transformed counts for one gene. with Wilcoxon 
+# rank-sum p-values added. The function is applied to BRCA1, BRCA2, and PALB2, and the 
+# three plots are arranged side-by-side in one multi-panel figure.
 
+# Count how many samples fall into each sample type (definition column)
 table(meta_data$definition)
-table(is.na(meta_data$definition))
 
-# --------------------------------------------------------
+# Checks for any missing sample type values
+sum(is.na(meta_data$definition)) 
 
+# Function: build a boxplot + jitter plot of one gene's expression by sample type
+# data_set      - df with one row per sample (counts joined to metadata)
+# ensemble_ID   - column name of the gene's Ensembl ID (counts column)
+# gene_name     - readable gene name used in axis label and title
+# metadata_col  - metadata column to group by (here, "definition")
 sample_type_jitter_plot <- function(data_set, ensembl_ID, gene_name, metadata_col) {
+  
+  # Removes samples with missing sample types, then log2-transform the counts
   sample_types <- data_set |> 
   filter(!is.na(.data[[metadata_col]])) |> 
   mutate(gene_log = log2(.data[[ensembl_ID]] + 1))
 
-p <- ggplot(sample_types, aes(x = .data[[metadata_col]], y = gene_log, fill = .data[[metadata_col]])) +
+# Main base plot: x = sample type, y = log2 expression, fill = sample type
+p <- ggplot(sample_types, 
+            aes(x = .data[[metadata_col]], y = gene_log, fill = .data[[metadata_col]])) +
+  # Boxplot summarizing median and spread per group
   geom_boxplot(alpha = 0.5) +
+  
+  # Individual samples overlaid, spread horizontally to reduce overlap
   geom_jitter(width = 0.15, alpha = 0.4, size = 1) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0.5)) +
+  
+  # Tilt x-axis labels 45 degrees to fit the longer names, centers the title
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), 
+        plot.title = element_text(hjust = 0.5)) +
+  
+  # Adds Wilcoxon rank-sum p-values for each pair of sample types
   stat_compare_means(
     comparisons = list(
       c("Primary solid Tumor", "Solid Tissue Normal"),
       c("Primary solid Tumor", "Metastatic"),
       c("Solid Tissue Normal", "Metastatic")
     ),
-    method = "wilcox.test") +
+    method = "wilcox.test",
+    label = "p.format") +
   
   scale_fill_brewer(palette = "Pastel2", guide = "none") +
+  
+  # Axis labels and wrapped title
   labs(x = "Sample Type", 
        y = paste("log2(", gene_name, "Count + 1)"),
-       title = str_wrap(paste(gene_name, "Expression by Sample Type"), width = 25))
+       title = str_wrap(paste(gene_name, "Expression by Sample Type"), width = 25),
+       subtitle = "(Pairwise Wilcoxon rank-sum tests)")
   
 return(p)
 }
 
+# Creates one plot per gene (Ensembl ID, display name, grouping column)
 BRCA1_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000012048.23", "BRCA1", "definition")
 BRCA2_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000139618.16", "BRCA2", "definition")
 PALB2_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000083093.10", "PALB2", "definition")
-# BARD1_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000138376.11", "BARD1", "definition")
-# ATM_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000149311.19", "ATM", "definition")
-# BRIP1_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000136492.9", "BRIP1", "definition")
-# RAD50_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000113522.14", "RAD50", "definition")
-# RAD51C_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000108384.15", "RAD51C", "definition")
-# CHEK2_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000183765.23", "CHEK2", "definition")
-# NBN_jitter <- sample_type_jitter_plot(all_BRCA_data, "ENSG00000104320.14", "NBN", "definition")
 
+# Arranges the three single plots in a single row (3 columns x 1 row)
+jitter_plots_arranged <- ggarrange(ncol = 3, nrow = 1, widths = 2, heights = 6, plotlist = BRCA1_jitter, BRCA2_jitter, PALB2_jitter)
 
-ggarrange(ncol = 3, nrow = 1, widths = 2, heights = 6, plotlist = BRCA1_jitter, BRCA2_jitter, PALB2_jitter)
-
-
-
+ggsave("jitter_plots.png", plot = jitter_plots_arranged, width = 12, height = 8)
 
 ```
+
 ```{r}
 # LIMITATION: Determines how many unique patients/patient codes exist in the 
 # data to confirm if there are mutliple samples included from the same patient.
@@ -424,6 +443,11 @@ n_distinct(meta_data$patient)
 # LIMITATION: Determines how many of each sample type exist in the data set.
 table(meta_data$definition)
 
+# LIMITATION: Determines how many of each sample type exist in the data set.
+table(meta_data_age_cat$age_at_diagnosis)
+
+# LIMITATION: Determines how many samples are missing an age at diagnosis.
+sum(is.na(meta_data$age_at_diagnosis))
 ```
 
 
